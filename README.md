@@ -8,3 +8,5 @@ for the Java program, a filter can be delivered that recognizes the desired line
 
 For information on how to use the library and what settings exist, please refer to the JavaDoc given at
 the objects and methods. 
+
+For some simple examples, consult the tests. They use some Python scripts to communicate with.
