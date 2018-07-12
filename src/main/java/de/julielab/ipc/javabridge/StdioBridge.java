@@ -25,7 +25,9 @@ import java.util.stream.Stream;
  * has been sent to the external process. To not miss the answer, a background thread is always reading lines
  * from the standard input of the external process. To get these messages, call {@link #receive()}. This method
  * either gets existing messages that already have been read or it <em>waits</em> for a message to arrive. Thus,
- * the method might block <em>indefinitely</em> in case that no message is sent by the external process.</p>
+ * the method might block <em>indefinitely</em> in case that no message is sent by the external process.
+ * This is way calls to {@link #send(String)} and {@link #receive()} should always come in pairs. For this purpose,
+ * the method {@link #sendAndReceive(String)} is helpful.</p>
  * <p>At the moment, this class supports arbitrary requests and one-line responses. Thus, the external process
  * must either respond for each request with exactly one line or, if other output is necessary for the external
  * program, is might output multiple lines but should then mark the actual output line somehow, e.g. by a prefix like
@@ -93,12 +95,27 @@ public class StdioBridge {
         }
     }
 
+    /**
+     * Synchronously sends the given string data to the external program. It must be programmed in a way to accept
+     * these data.
+     * @param data The message to be sent to the external process.
+     */
     public void send(String data) {
         if (communicator == null)
             throw new IllegalStateException("The internal Python-Java communicator has not been initialized. Did you forget to execute start()?");
         communicator.send(data);
     }
 
+    /**
+     * <p>Receives data from the external process.</p>
+     * <p>For this purpose, this method will <em>block</em> until data is available. If {@link Options#getResultLineIndicator()}
+     * is given, the method will wait until a line is encountered that is accepted by the respective predicate.</p>
+     * <p>This method should only be called if {@link #send(String)} has been called before. Otherwise, there will
+     * probably be nothing to read the the method will block indefinitely</p>
+     *
+     * @return The next data line received from the external process.
+     * @throws InterruptedException If the method is interrupted while waiting for the next input.
+     */
     public Stream<String> receive() throws InterruptedException {
         List<String> lines = communicator.receive();
         if (options.getResultTransformator() != null)
@@ -106,6 +123,13 @@ public class StdioBridge {
         return lines.stream();
     }
 
+    /**
+     * Just calls {@link #send(String)} and {@link #receive()} one ofter the other. Exclusively using this method
+     * ensures that there is always something to read and the receive method does not block forever.
+     * @param data The data to send.
+     * @return The received response.
+     * @throws InterruptedException It waiting for a response is interrupted.
+     */
     public Stream<String> sendAndReceive(String data) throws InterruptedException {
         send(data);
         return receive();
