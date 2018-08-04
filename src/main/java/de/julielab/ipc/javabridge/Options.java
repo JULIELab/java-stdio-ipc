@@ -7,14 +7,14 @@ import java.util.function.Predicate;
  * This is class is a simple container for options given to the constructor of {@link StdioBridge}. The meaning
  * of each option is explained at its setter method.
  */
-public class Options {
+public class Options<T> {
     private String executable;
-    private Function<String, String> resultTransformator;
-    private Predicate<String> resultLineIndicator;
+    private Function<T, T> resultTransformator;
+    private Predicate<T> resultLineIndicator;
     private String externalProgramTerminationSignal;
 
 
-    public Function<String, String> getResultTransformator() {
+    public Function<T, T> getResultTransformator() {
         return resultTransformator;
     }
 
@@ -25,7 +25,7 @@ public class Options {
      * to indicate lines that are meant for the Java program to read.
      * @param resultTransformator The result transformer.
      */
-    public void setResultTransformator(Function<String, String> resultTransformator) {
+    public void setResultTransformator(Function<T, T> resultTransformator) {
         this.resultTransformator = resultTransformator;
     }
 
@@ -42,7 +42,7 @@ public class Options {
         this.executable = executable;
     }
 
-    public Predicate<String> getResultLineIndicator() {
+    public Predicate<T> getResultLineIndicator() {
         return resultLineIndicator;
     }
 
@@ -58,7 +58,7 @@ public class Options {
      * predicate.
      * @param resultLineIndicator A predicate to filter output lines, may be null.
      */
-    public void setResultLineIndicator(Predicate<String> resultLineIndicator) {
+    public void setResultLineIndicator(Predicate<T> resultLineIndicator) {
         this.resultLineIndicator = resultLineIndicator;
     }
 

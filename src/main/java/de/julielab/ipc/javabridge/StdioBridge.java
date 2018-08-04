@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -42,7 +43,7 @@ import java.util.stream.Stream;
  * the communication between Java and Python via STDOUT/IN will most like get stuck because the buffers don't get
  * filled at some point an no data is actually sent.</p>
  */
-public class StdioBridge {
+public class StdioBridge<T> {
 
     private final static Logger log = LoggerFactory.getLogger(StdioBridge.class);
 
@@ -52,7 +53,7 @@ public class StdioBridge {
     private ErrorStreamConsumer errorStreamConsumer;
     private Options options;
 
-    public StdioBridge(Options options, String... arguments) {
+    public StdioBridge(Options<T> options, String... arguments) {
         this.options = options;
         if (arguments.length == 0)
             throw new IllegalArgumentException("No external program to run has been specified.");
@@ -70,7 +71,7 @@ public class StdioBridge {
                 ErrorStreamConsumer(process.getErrorStream());
         errorStreamConsumer.start();
         log.info("Started process with arguments {}", Arrays.toString(arguments));
-       // BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        // BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
         BufferedInputStream bis = new BufferedInputStream(process.getInputStream());
         BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
         communicator = new GenericCommunicator<String>(new StringReader(bis, options.getResultLineIndicator()), bw, options.getResultLineIndicator());
@@ -118,10 +119,12 @@ public class StdioBridge {
      * @return The next data line received from the external process.
      * @throws InterruptedException If the method is interrupted while waiting for the next input.
      */
-    public Stream<String> receive() throws InterruptedException {
-        List<String> lines = communicator.receive();
-        if (options.getResultTransformator() != null)
-          return lines.stream().map(options.getResultTransformator()::apply);
+    public Stream<T> receive() throws InterruptedException {
+        List<T> lines = communicator.receive();
+        if (options.getResultTransformator() != null) {
+            Function<T, T> transformator = options.getResultTransformator();
+            return lines.stream().map(transformator::apply);
+        }
         return lines.stream();
     }
 
@@ -133,7 +136,7 @@ public class StdioBridge {
      * @return The received response.
      * @throws InterruptedException It waiting for a response is interrupted.
      */
-    public Stream<String> sendAndReceive(String data) throws InterruptedException {
+    public Stream<T> sendAndReceive(String data) throws InterruptedException {
         send(data);
         return receive();
     }
@@ -390,7 +393,6 @@ class GenericCommunicator<T> {
         send(data);
         return receive();
     }
-
 
 
     private class Writer {

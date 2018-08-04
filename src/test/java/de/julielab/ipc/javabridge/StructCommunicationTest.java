@@ -11,11 +11,11 @@ import java.util.stream.Stream;
 public class StructCommunicationTest {
     @Test
     public void test() throws InterruptedException, IOException {
-        Options options = new Options();
+        Options<String> options = new Options();
         options.setExecutable("python");
         options.setResultLineIndicator(line -> line.startsWith("Vector bytes: "));
         options.setResultTransformator(line -> line.substring("Vector bytes: b".length()).replaceAll("'", ""));
-        StdioBridge bridge = new StdioBridge(options, "-u",  "src/test/resources/python/arrayVectorExchange.py");
+        StdioBridge<String> bridge = new StdioBridge(options, "-u",  "src/test/resources/python/arrayVectorExchange.py");
         bridge.start();
         Stream<String> responses = bridge.sendAndReceive("nonsense");
         Stream<String> mow = bridge.sendAndReceive("something else");

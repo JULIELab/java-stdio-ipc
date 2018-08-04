@@ -14,7 +14,7 @@ public class StdioBridgeTest {
         Options params = new Options();
         params.setExecutable("python");
         params.setExternalProgramTerminationSignal("exit");
-        StdioBridge bridge = new StdioBridge(params, "-u", "src/test/resources/python/simple.py");
+        StdioBridge<String> bridge = new StdioBridge<>(params, "-u", "src/test/resources/python/simple.py");
         assertThatCode(() -> bridge.start()).doesNotThrowAnyException();
         bridge.send("Hallo");
         List<String> list = bridge.receive().collect(Collectors.toList());
@@ -30,7 +30,7 @@ public class StdioBridgeTest {
         Options params = new Options();
         params.setExecutable("python");
         params.setExternalProgramTerminationSignal("exit");
-        StdioBridge bridge = new StdioBridge(params, "-u", "src/test/resources/python/simple.py");
+        StdioBridge<String> bridge = new StdioBridge(params, "-u", "src/test/resources/python/simple.py");
         assertThatCode(() -> bridge.start()).doesNotThrowAnyException();
         bridge.send("Hallo");
         bridge.send("Hallo");
@@ -52,7 +52,7 @@ public class StdioBridgeTest {
         Options params = new Options();
         params.setExecutable("python");
         params.setExternalProgramTerminationSignal("exit");
-        StdioBridge bridge = new StdioBridge(params, "-u", "src/test/resources/python/simple.py");
+        StdioBridge<String> bridge = new StdioBridge(params, "-u", "src/test/resources/python/simple.py");
         assertThatCode(() -> bridge.start()).doesNotThrowAnyException();
         assertThat(bridge.sendAndReceive("Double Action")).containsExactly("Got line: Double Action");
         assertThat(bridge.sendAndReceive("Double Action")).containsExactly("Got line: Double Action");
@@ -62,11 +62,11 @@ public class StdioBridgeTest {
 
     @Test
     public void noiseTest() throws IOException, InterruptedException {
-        Options params = new Options();
+        Options<String> params = new Options();
         params.setExecutable("python");
         params.setResultLineIndicator(s -> s.startsWith("Output:"));
         params.setExternalProgramTerminationSignal("exit");
-        StdioBridge bridge = new StdioBridge(params, "-u", "src/test/resources/python/noise.py");
+        StdioBridge<String> bridge = new StdioBridge(params, "-u", "src/test/resources/python/noise.py");
         assertThatCode(() -> bridge.start()).doesNotThrowAnyException();
         bridge.send("Hallo");
         List<String> list = bridge.receive().collect(Collectors.toList());
@@ -79,7 +79,7 @@ public class StdioBridgeTest {
 
     @Test
     public void noiseSendAndReceive() throws IOException, InterruptedException {
-        Options params = new Options();
+        Options<String> params = new Options();
         params.setExecutable("python");
         params.setResultLineIndicator(s -> s.startsWith("Output:"));
         params.setExternalProgramTerminationSignal("exit");
@@ -93,12 +93,12 @@ public class StdioBridgeTest {
 
     @Test
     public void resultTransformator() throws IOException, InterruptedException {
-        Options params = new Options();
+        Options<String> params = new Options<>();
         params.setExecutable("python");
         params.setResultLineIndicator(s -> s.startsWith("Output:"));
         params.setResultTransformator(s -> s.substring(8));
         params.setExternalProgramTerminationSignal("exit");
-        StdioBridge bridge = new StdioBridge(params, "-u", "src/test/resources/python/noise.py");
+        StdioBridge<String> bridge = new StdioBridge(params, "-u", "src/test/resources/python/noise.py");
         assertThatCode(() -> bridge.start()).doesNotThrowAnyException();
         assertThat(bridge.sendAndReceive("Double Action")).containsExactly("Double Action");
         assertThat(bridge.sendAndReceive("Double Action")).containsExactly("Double Action");
