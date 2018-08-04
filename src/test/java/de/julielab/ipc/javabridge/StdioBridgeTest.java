@@ -36,6 +36,8 @@ public class StdioBridgeTest {
         bridge.send("Hallo");
         bridge.send("Hallo");
         bridge.send("Hallo");
+        // We need to wait a moment to make sure that all the responses have been read
+        Thread.sleep(500);
         List<String> list = bridge.receive().collect(Collectors.toList());
         assertThat(list).isNotEmpty();
         assertThat(list).hasSize(4);
