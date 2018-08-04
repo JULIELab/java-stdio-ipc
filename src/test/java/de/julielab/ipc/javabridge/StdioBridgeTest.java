@@ -26,6 +26,26 @@ public class StdioBridgeTest {
     }
 
     @Test
+    public void simpleMultiSendSingleRetrieveTest() throws IOException, InterruptedException {
+        Options params = new Options();
+        params.setExecutable("python");
+        params.setExternalProgramTerminationSignal("exit");
+        StdioBridge bridge = new StdioBridge(params, "-u", "src/test/resources/python/simple.py");
+        assertThatCode(() -> bridge.start()).doesNotThrowAnyException();
+        bridge.send("Hallo");
+        bridge.send("Hallo");
+        bridge.send("Hallo");
+        bridge.send("Hallo");
+        List<String> list = bridge.receive().collect(Collectors.toList());
+        assertThat(list).isNotEmpty();
+        assertThat(list).hasSize(4);
+        assertThat(list).containsExactly("Got line: Hallo", "Got line: Hallo", "Got line: Hallo", "Got line: Hallo");
+        bridge.send("Another line");
+        assertThat(bridge.receive()).containsExactly("Got line: Another line");
+        assertThatCode(() -> bridge.stop()).doesNotThrowAnyException();
+    }
+
+    @Test
     public void simpleSendAndReceive() throws IOException, InterruptedException {
         Options params = new Options();
         params.setExecutable("python");
