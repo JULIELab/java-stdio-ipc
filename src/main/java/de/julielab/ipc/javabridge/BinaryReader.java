@@ -25,7 +25,7 @@ public class BinaryReader extends Reader<byte[]> {
         setName("BinaryReaderThread");
         log.debug("Starting binary reader thread");
         try {
-            Supplier<byte[]> bufferSupplier = () -> new byte[1];
+            Supplier<byte[]> bufferSupplier = () -> new byte[8192];
             byte[] buffer = bufferSupplier.get();
             int lastReadSize;
             int bytesReadInCurrentMessage = 0;
@@ -43,15 +43,13 @@ public class BinaryReader extends Reader<byte[]> {
 
                 if (currentMessageLength != -1 && bytesReadInCurrentMessage - INT_SIZE >= currentMessageLength) {
                     currentMessage = assembleCurrentMessage(currentMessageLength);
-
-                }
-
-                if (currentMessage != null) {
                     inputDeque.add(currentMessage);
                     currentMessageLength = -1;
                     bytesReadInCurrentMessage = 0;
-                    currentMessage = null;
+
+                    System.out.println(readMessageLength());
                 }
+
                 log.trace("Received: {} bytes", lastReadSize);
                 buffer = bufferSupplier.get();
             }
@@ -84,11 +82,11 @@ public class BinaryReader extends Reader<byte[]> {
             copied += toCopy;
 
             // Handle the case that we have already the beginning of the next message
-            if (toCopy < readBytesLength) {
+            if (toCopy + INT_SIZE < readBytesLength) {
                 clearBuffer = false;
                 int byteLength = readBytesLength - toCopy;
                 byte[] nextMessageBegin = new byte[byteLength];
-                System.arraycopy(b, toCopy, nextMessageBegin, 0, byteLength);
+                System.arraycopy(b, toCopy + INT_SIZE, nextMessageBegin, 0, byteLength);
                 List<byte[]> newMessageBuffer = new ArrayList<>(messageBuffer.size());
                 List<Integer> newMessageBufferSizes = new ArrayList<>(messageBufferSizes.size());
                 newMessageBuffer.add(nextMessageBegin);

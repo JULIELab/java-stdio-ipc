@@ -13,9 +13,10 @@ for line in sys.stdin:
     sys.stdout.buffer.write(pack('>i', len(bytes)))
     sys.stdout.buffer.write(bytes)
     print(end='')
+
     vector = [0.7, 0.8, 0.9]
     bytes = pack('>ddd', *vector)
     sys.stdout.buffer.write(pack('>i', len(bytes)))
     sys.stdout.buffer.write(bytes)
     print(end='')
-    print("Received " + line, file=sys.stderr)
+    print("Received " + line, file=sys.stderr, end='')

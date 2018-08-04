@@ -25,6 +25,7 @@ public class StructCommunicationTest {
         for (int i = 0; i < db.capacity(); i++)
             array[i] = db.get(i);
         assertThat(array).isEqualTo(new double[]{0.1, 0.2, 0.3, -0.4, 0, 42.1337});
+        System.out.println("Test 1 passed");
 
         // In this example, each send produces TWO responses. It currently only possible to fetch them
         // via one receive() for each response. This would actually make the returning of a Stream
