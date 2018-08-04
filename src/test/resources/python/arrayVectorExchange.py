@@ -5,14 +5,14 @@ import sys
 from struct import *
 import base64
 
-vector = [0.1, 0.2, 0.3, 0.4, 0, 42.1337]
+vector = [0.1]
 for line in sys.stdin:
     if line.strip() == "exit":
         sys.exit(0)
 
-    bytes = pack('>dddddd', *vector)
+    bytes = pack('>d', *vector)
     #b64 = base64.b64encode(bytes)
     #print("Vector bytes: " + str(b64))
-    sys.stdout.buffer.write(b"some binary data")
+    sys.stdout.buffer.write(pack('>i', len(bytes)))
+    sys.stdout.buffer.write(bytes)
     print()
-    print("huhu", file=sys.stderr)

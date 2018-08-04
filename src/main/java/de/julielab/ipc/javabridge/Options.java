@@ -8,11 +8,29 @@ import java.util.function.Predicate;
  * of each option is explained at its setter method.
  */
 public class Options<T> {
+
     private String executable;
     private Function<T, T> resultTransformator;
     private Predicate<T> resultLineIndicator;
     private String externalProgramTerminationSignal;
+    private Predicate<T> endOfMessageSignal;
+    private Class<T> resultType;
+    public Options(Predicate<T> endOfMessageSignal, Class<T> resultType) {
+        this.endOfMessageSignal = endOfMessageSignal;
+        this.resultType = resultType;
+    }
 
+    public Predicate<T> getEndOfMessageSignal() {
+        return endOfMessageSignal;
+    }
+
+    public void setEndOfMessageSignal(Predicate<T> endOfMessageSignal) {
+        this.endOfMessageSignal = endOfMessageSignal;
+    }
+
+    public Class<T> getResultType() {
+        return resultType;
+    }
 
     public Function<T, T> getResultTransformator() {
         return resultTransformator;
@@ -23,6 +41,7 @@ public class Options<T> {
      * it into the final format. This is used to remove markers on the input line that indicate the line to be
      * a result line in contrast to other program output. For example, lines could be prefixed with <code>Output:</code>
      * to indicate lines that are meant for the Java program to read.
+     *
      * @param resultTransformator The result transformer.
      */
     public void setResultTransformator(Function<T, T> resultTransformator) {
@@ -36,6 +55,7 @@ public class Options<T> {
     /**
      * The name of the external program to execute. For Python programs this would by <code>python</code>, for example,
      * or even another version specific path like <code>/usr/local/bin/python36</code>.
+     *
      * @param executable The path to the executable for the external program.
      */
     public void setExecutable(String executable) {
@@ -56,6 +76,7 @@ public class Options<T> {
      * we are interested in because we can never know when the external process has sent all data. With the predicate set,
      * we will wait for each {@link StdioBridge#receive()} call for the next line to occur that is accepted by the
      * predicate.
+     *
      * @param resultLineIndicator A predicate to filter output lines, may be null.
      */
     public void setResultLineIndicator(Predicate<T> resultLineIndicator) {
@@ -70,6 +91,7 @@ public class Options<T> {
      * To gracefully terminate the external process, some signal like <code>quit</code> or <code>exit</code>
      * could be accepted by the external program as signal to end the application. If such a signal is accepted,
      * provide it here. It is sent to the external process on {@link StdioBridge#stop()}.
+     *
      * @param externalProgramTerminationSignal A string that signals the external process to end.
      */
     public void setExternalProgramTerminationSignal(String externalProgramTerminationSignal) {

@@ -74,7 +74,15 @@ public class StdioBridge<T> {
         // BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
         BufferedInputStream bis = new BufferedInputStream(process.getInputStream());
         BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
-        communicator = new GenericCommunicator<String>(new StringReader(bis, options.getResultLineIndicator()), bw, options.getResultLineIndicator());
+
+        Reader<T> r;
+        if (options.getResultType().equals(String.class))
+            r = (Reader<T>) new StringReader(bis, options.getResultLineIndicator());
+        else if (options.getResultType().equals(byte[].class))
+            r = (Reader<T>) new BinaryReader(bis, options.getResultLineIndicator());
+        else
+            throw new IllegalArgumentException("The result type must be String or byte[] but was " + options.getResultType());
+        communicator = new GenericCommunicator<T>(r, bw);
     }
 
     public void stop() throws InterruptedException {
@@ -247,115 +255,16 @@ public class StdioBridge<T> {
 }
 
 
-class Communicator {
-    private final static Logger log = LoggerFactory.getLogger(Communicator.class);
-    private final Reader reader;
-    private final Writer writer;
-    private BufferedReader br;
-    private BlockingQueue<String> inputDeque = new LinkedBlockingQueue<>();
-    private Deque<String> outputDeque = new ArrayDeque<>();
-    private BufferedWriter bw;
-    private Predicate<String> resultLineIndicator;
-
-    public Communicator(BufferedReader br, BufferedWriter bw, Predicate<String> resultLineIndicator) {
-        this.br = br;
-        this.bw = bw;
-        this.resultLineIndicator = resultLineIndicator;
-        this.reader = new Reader();
-        this.writer = new Writer();
-
-        reader.start();
-    }
-
-    public void close() {
-        if (!inputDeque.isEmpty())
-            log.warn("Python-Java bridge was closed before all data was received from the external program:" + inputDeque.stream().collect(Collectors.joining(", ")));
-        reader.interrupt();
-        if (!outputDeque.isEmpty())
-            log.warn("Python-Java bridge was closed before all data was sent to the external program: " + outputDeque.stream().collect(Collectors.joining(", ")));
-    }
-
-    public void send(String data) {
-        outputDeque.add(data);
-        writer.run();
-    }
-
-    public List<String> receive() throws InterruptedException {
-        List<String> receivedData = new ArrayList<>();
-
-        synchronized (reader) {
-            if (inputDeque.isEmpty()) {
-                log.trace("Waiting for something to be read");
-                reader.wait();
-            }
-            inputDeque.drainTo(receivedData);
-        }
-        log.trace("Reading from internal buffer: " + receivedData);
-        return receivedData;
-    }
-
-    public List<String> sendAndReceive(String data) throws InterruptedException {
-        send(data);
-        return receive();
-    }
-
-    /**
-     * A thread reading all output from the Python program
-     */
-    private class Reader extends Thread {
-        public void run() {
-            setName("ReaderThread");
-            log.debug("Starting reader thread");
-            String line;
-            try {
-                while ((line = br.readLine()) != null) {
-                    synchronized (this) {
-                        if (resultLineIndicator == null || resultLineIndicator.test(line)) {
-                            if (line.length() > 0)
-                                inputDeque.add(line);
-                            notify();
-                        }
-                    }
-                    log.trace("Received: {}", line);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private class Writer {
-        public void run() {
-            try {
-                while (!outputDeque.isEmpty()) {
-                    String toWrite = outputDeque.pop();
-                    log.trace("Writing: " + toWrite);
-                    bw.write(toWrite);
-                    bw.newLine();
-                    // Important! When we don't flush, the data so sent will most like just reside in the buffer,
-                    // at least the last part of it, and dont get sent to the external process. The external process
-                    // will then probably block indefinitely, waiting for our request to finish.
-                    bw.flush();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-}
-
 class GenericCommunicator<T> {
     private final static Logger log = LoggerFactory.getLogger(GenericCommunicator.class);
-    private final Reader reader;
+    private final Reader<T> reader;
     private final Writer writer;
     private BlockingQueue<T> inputDeque;
     private Deque<String> outputDeque = new ArrayDeque<>();
     private BufferedWriter bw;
-    private Predicate<T> resultLineIndicator;
 
-    public GenericCommunicator(Reader reader, BufferedWriter bw, Predicate<T> resultLineIndicator) {
+    public GenericCommunicator(Reader<T> reader, BufferedWriter bw) {
         this.bw = bw;
-        this.resultLineIndicator = resultLineIndicator;
         this.writer = new Writer();
         this.reader = reader;
         this.inputDeque = reader.getInputDeque();
