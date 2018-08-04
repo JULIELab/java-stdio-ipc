@@ -148,110 +148,6 @@ public class StdioBridge<T> {
         send(data);
         return receive();
     }
-
-
-    class BinaryCommunicator {
-        private final Logger log = LoggerFactory.getLogger(BinaryCommunicator.class);
-        private final BinaryReader reader;
-        private final Writer writer;
-        private BufferedInputStream bis;
-        private BlockingQueue<byte[]> inputDeque = new LinkedBlockingQueue<>();
-        private Deque<String> outputDeque = new ArrayDeque<>();
-        private BufferedWriter bw;
-        private Predicate<String> resultLineIndicator;
-
-        public BinaryCommunicator(BufferedInputStream bis, BufferedWriter bw, Predicate<String> resultLineIndicator) {
-            this.bis = bis;
-            this.bw = bw;
-            this.resultLineIndicator = resultLineIndicator;
-            this.reader = new BinaryReader();
-            this.writer = new Writer();
-
-            reader.start();
-        }
-
-        public void close() {
-            if (!inputDeque.isEmpty())
-                log.warn("Python-Java bridge was closed before all data was received from the external program. {} bytes are outstanding.", inputDeque.stream().count());
-            reader.interrupt();
-            if (!outputDeque.isEmpty())
-                log.warn("Python-Java bridge was closed before all data was sent to the external program: " + outputDeque.stream().collect(Collectors.joining(", ")));
-        }
-
-        public void send(String data) {
-            outputDeque.add(data);
-            writer.run();
-        }
-
-        public List<byte[]> receive() throws InterruptedException {
-            List<byte[]> receivedData = new ArrayList<>();
-
-            synchronized (reader) {
-                if (inputDeque.isEmpty()) {
-                    log.trace("Waiting for something to be read");
-                    reader.wait();
-                }
-                inputDeque.drainTo(receivedData);
-            }
-            log.trace("Reading from internal buffer: " + receivedData);
-            return receivedData;
-        }
-
-        public List<byte[]> sendAndReceive(String data) throws InterruptedException {
-            send(data);
-            return receive();
-        }
-
-        /**
-         * A thread reading all output from the Python program
-         */
-        private class BinaryReader extends Thread {
-            public void run() {
-                setName("BinaryReaderThread");
-                log.debug("Starting binary reader thread");
-                String line;
-                try {
-                    byte[] buffer = new byte[1];
-                    int bytesRead = -1;
-                    while ((bytesRead = bis.read(buffer)) != -1) {
-                        synchronized (this) {
-                            // if (resultLineIndicator == null || resultLineIndicator.test(new String(buffer, 0, bytesRead, StandardCharsets.UTF_8))) {
-                            if (bytesRead > 0) {
-                                byte[] b = new byte[bytesRead];
-                                System.arraycopy(buffer, 0, b, 0, bytesRead);
-                                //inputDeque.add(b);
-                            }
-                            notify();
-                        }
-                        //    }
-                        log.trace("Received: {} bytes", bytesRead);
-                    }
-                    System.out.println("AFTEr WHILE");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        private class Writer {
-            public void run() {
-                try {
-                    while (!outputDeque.isEmpty()) {
-                        String toWrite = outputDeque.pop();
-                        log.trace("Writing: " + toWrite);
-                        bw.write(toWrite);
-                        bw.newLine();
-                        // Important! When we don't flush, the data so sent will most like just reside in the buffer,
-                        // at least the last part of it, and dont get sent to the external process. The external process
-                        // will then probably block indefinitely, waiting for our request to finish.
-                        bw.flush();
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
 }
 
 
@@ -277,6 +173,8 @@ class GenericCommunicator<T> {
         reader.interrupt();
         if (!outputDeque.isEmpty())
             log.warn("Python-Java bridge was closed before all data was sent to the external program: " + outputDeque.stream().collect(Collectors.joining(", ")));
+        inputDeque = null;
+        outputDeque = null;
     }
 
     public void send(String data) {
@@ -286,14 +184,12 @@ class GenericCommunicator<T> {
 
     public List<T> receive() throws InterruptedException {
         List<T> receivedData = new ArrayList<>();
-
-        synchronized (reader) {
-            if (inputDeque.isEmpty()) {
-                log.trace("Waiting for something to be read");
-                reader.wait();
-            }
-            inputDeque.drainTo(receivedData);
-        }
+        if (inputDeque == null)
+            throw new IllegalStateException("This communicator has already been closed, further calls to receive() are not permitted.");
+        log.trace("Waiting for something to be read");
+        receivedData.add(inputDeque.take());
+        inputDeque.drainTo(receivedData);
+        //}
         log.trace("Reading from internal buffer: " + receivedData);
         return receivedData;
     }

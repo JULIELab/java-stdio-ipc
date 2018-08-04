@@ -46,12 +46,11 @@ public class BinaryReader extends Reader<byte[]> {
 
                 }
 
-                synchronized (this) {
-                    if (currentMessage != null) {
-                        inputDeque.add(currentMessage);
-                        notify();
-                        currentMessageLength = -1;
-                    }
+                if (currentMessage != null) {
+                    inputDeque.add(currentMessage);
+                    currentMessageLength = -1;
+                    bytesReadInCurrentMessage = 0;
+                    currentMessage = null;
                 }
                 log.trace("Received: {} bytes", lastReadSize);
                 buffer = bufferSupplier.get();
@@ -68,6 +67,7 @@ public class BinaryReader extends Reader<byte[]> {
         currentMessage = new byte[effectiveMessageLength];
         int copied = 0;
         int prologPast = 0;
+        boolean clearBuffer = true;
         for (int i = 0; i < messageBuffer.size(); i++) {
             byte[] b = messageBuffer.get(i);
             Integer readBytesLength = messageBufferSizes.get(i);
@@ -84,7 +84,8 @@ public class BinaryReader extends Reader<byte[]> {
             copied += toCopy;
 
             // Handle the case that we have already the beginning of the next message
-            if (toCopy > readBytesLength) {
+            if (toCopy < readBytesLength) {
+                clearBuffer = false;
                 int byteLength = readBytesLength - toCopy;
                 byte[] nextMessageBegin = new byte[byteLength];
                 System.arraycopy(b, toCopy, nextMessageBegin, 0, byteLength);
@@ -101,6 +102,12 @@ public class BinaryReader extends Reader<byte[]> {
                 // Stop copying data for the current message!
                 break;
             }
+        }
+        if (clearBuffer) {
+            // In case it just fit exactly (thus, we have read exactly the bytes of one message),
+            // just clear the buffers.
+            messageBuffer.clear();
+            messageBufferSizes.clear();
         }
         log.trace("Copied {} bytes for the current message", copied);
         return currentMessage;

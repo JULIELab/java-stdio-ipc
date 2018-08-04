@@ -13,20 +13,11 @@ public class Options<T> {
     private Function<T, T> resultTransformator;
     private Predicate<T> resultLineIndicator;
     private String externalProgramTerminationSignal;
-    private Predicate<T> endOfMessageSignal;
     private Class<T> resultType;
-    public Options(Predicate<T> endOfMessageSignal, Class<T> resultType) {
-        this.endOfMessageSignal = endOfMessageSignal;
+    public Options(Class<T> resultType) {
         this.resultType = resultType;
     }
 
-    public Predicate<T> getEndOfMessageSignal() {
-        return endOfMessageSignal;
-    }
-
-    public void setEndOfMessageSignal(Predicate<T> endOfMessageSignal) {
-        this.endOfMessageSignal = endOfMessageSignal;
-    }
 
     public Class<T> getResultType() {
         return resultType;
