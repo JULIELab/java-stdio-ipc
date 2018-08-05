@@ -26,7 +26,7 @@ public class BinaryReader extends Reader<byte[]> {
         setName("BinaryReaderThread");
         log.debug("Starting binary reader thread");
         try {
-            Supplier<byte[]> bufferSupplier = () -> new byte[54];
+            Supplier<byte[]> bufferSupplier = () -> new byte[8192];
             byte[] buffer = bufferSupplier.get();
             int lastReadSize;
             int bytesReadInCurrentMessage = 0;
@@ -43,18 +43,15 @@ public class BinaryReader extends Reader<byte[]> {
                     currentMessageLength = readMessageLength();
                 }
 
-                // synchronized (this) {
                 while (currentMessageLength != -1 && bytesReadInCurrentMessage - INT_SIZE >= currentMessageLength) {
                     currentMessage = assembleCurrentMessage(currentMessageLength);
                     inputDeque.add(currentMessage);
                     log.trace("Added message of length {} bytes to the queue", currentMessage.length);
                     bytesReadInCurrentMessage = messageBufferSizes.isEmpty() ? 0 : messageBufferSizes.stream().reduce(0, (a, b) -> a + b);
                     currentMessageLength = readMessageLength();
-                    //  notify();
                 }
-                // }
 
-                buffer = new byte[5];//bufferSupplier.get();
+                buffer = bufferSupplier.get();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -69,6 +66,7 @@ public class BinaryReader extends Reader<byte[]> {
         int prologPast = 0;
         boolean clearBuffer = true;
         for (int i = 0; i < messageBuffer.size(); i++) {
+            // First thing: Skip over the message length integer
             byte[] b = messageBuffer.get(i);
             Integer readBytesLength = messageBufferSizes.get(i);
             int prologInCurrentBuffer = 0;
@@ -83,16 +81,13 @@ public class BinaryReader extends Reader<byte[]> {
                 prologPast += missingPrologSize;
                 prologInCurrentBuffer = missingPrologSize;
             }
-            System.out.println("Prolog: " +4);
-            System.out.println("Prolog in current buffer: " +prologInCurrentBuffer);
-            System.out.println("Copied: " + 0);
-            System.out.println("Read bytes: " + readBytesLength);
+
+            // Now copy as much from the current message as is available (might well be the whole message)
             int toCopy = Math.min(currentMessageLength - copied, readBytesLength - prologInCurrentBuffer);
-            System.out.println("To copy: " + toCopy);
             System.arraycopy(b, prologInCurrentBuffer, currentMessage, copied, toCopy);
             copied += toCopy;
 
-            // Handle the case that we have already the beginning of the next message
+            // Handle the case that we have read the current message and also have the beginning of a next message
             if (toCopy + prologInCurrentBuffer < readBytesLength) {
                 clearBuffer = false;
                 int byteLength = readBytesLength - (toCopy + prologInCurrentBuffer);
@@ -125,7 +120,8 @@ public class BinaryReader extends Reader<byte[]> {
 
     private int readMessageLength() {
         int currentMessageLength;
-        if (!messageBuffer.isEmpty() && messageBufferSizes.stream().reduce(0, (a,b)->a+b) >= INT_SIZE) {
+        // ONLY get the message length if we we even have enough bytes do determine it
+        if (!messageBuffer.isEmpty() && messageBufferSizes.stream().reduce(0, (a, b) -> a + b) >= INT_SIZE) {
             byte[] intBytes = new byte[INT_SIZE];
             int pos = 0;
             for (int i = 0; i < messageBuffer.size(); i++) {
@@ -137,7 +133,7 @@ public class BinaryReader extends Reader<byte[]> {
                 if (pos >= INT_SIZE)
                     break;
             }
-            System.out.println(Arrays.toString(intBytes));
+
             currentMessageLength = (intBytes[0] << 24) | (intBytes[1] << 16) | (intBytes[2] << 8) | intBytes[3];
             log.trace("Current message size is {} bytes", currentMessageLength);
             return currentMessageLength;
