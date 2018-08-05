@@ -1,5 +1,6 @@
 package de.julielab.ipc.javabridge;
 
+import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -25,6 +26,12 @@ public class StdioBridgeTest {
         assertThatCode(() -> bridge.stop()).doesNotThrowAnyException();
     }
 
+    /**
+     * @Ignore We don't do multi retrieval currently
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    @Ignore
     @Test
     public void simpleMultiSendSingleRetrieveTest() throws IOException, InterruptedException {
         Options params = new Options(String.class);

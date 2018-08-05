@@ -188,9 +188,12 @@ class GenericCommunicator<T> {
             throw new IllegalStateException("This communicator has already been closed, further calls to receive() are not permitted.");
         log.trace("Waiting for something to be read");
         receivedData.add(inputDeque.take());
-        inputDeque.drainTo(receivedData);
-        //}
-        log.trace("Reading from internal buffer: " + receivedData);
+//        synchronized (reader) {
+//            if (inputDeque.isEmpty())
+//                reader.wait();
+//            inputDeque.drainTo(receivedData);
+//        }
+        log.trace("Reading from internal buffer {} messages.", receivedData.size());
         return receivedData;
     }
 
