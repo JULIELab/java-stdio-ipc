@@ -112,4 +112,18 @@ public class StdioBridgeTest {
         assertThat(bridge.sendAndReceive("Double Action")).containsExactly("Double Action");
         assertThatCode(() -> bridge.stop()).doesNotThrowAnyException();
     }
+
+    @Test
+    public void receiveMultipleLines() throws Exception {
+        Options<String> params = new Options<>(String.class);
+        params.setExecutable("python");
+        params.setExternalProgramTerminationSignal("exit");
+        params.setMultilineResponseDelimiter("last line");
+        StdioBridge<String> bridge = new StdioBridge(params, "-u", "src/test/resources/python/multilineResponse.py");
+        assertThatCode(() -> bridge.start()).doesNotThrowAnyException();
+        bridge.send("some data");
+        final List<String> responses = bridge.receive().collect(Collectors.toList());
+        assertThat(responses).hasSize(3);
+        assertThatCode(() -> bridge.stop()).doesNotThrowAnyException();
+    }
 }

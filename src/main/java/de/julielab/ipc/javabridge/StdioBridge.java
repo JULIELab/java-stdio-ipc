@@ -27,11 +27,13 @@ import java.util.stream.Stream;
  * from the standard input of the external process. To get these messages, call {@link #receive()}. This method
  * either gets existing messages that already have been read or it <em>waits</em> for a message to arrive. Thus,
  * the method might block <em>indefinitely</em> in case that no message is sent by the external process.
- * This is way calls to {@link #send(String)} and {@link #receive()} should always come in pairs. For this purpose,
+ * This is why calls to {@link #send(String)} and {@link #receive()} should always come in pairs. For this purpose,
  * the method {@link #sendAndReceive(String)} is helpful.</p>
- * <p>At the moment, this class supports arbitrary requests and one-line responses. Thus, the external process
- * must either respond for each request with exactly one line or, if other output is necessary for the external
- * program, is might output multiple lines but should then mark the actual output line somehow, e.g. by a prefix like
+ * <p>This class supports arbitrary requests and one-line responses by default. By setting the {@link Options#multilineResponseDelimiter} field,
+ * multiple lines can be read for each request.
+ * </p><p>
+ * If the external
+ * program outputs logging that is not a result in the sense of this class the actual output line must be marked, e.g. by a prefix like
  * <code>Result:</code> or similar</p>
  * <p>The {@link Options} class accepts a {@link Predicate} to recognize such specific output lines. The Options
  * class also allows setting the actual program command whereas the program arguments are set to the descriptor of this
@@ -82,7 +84,7 @@ public class StdioBridge<T> {
             r = (Reader<T>) new BinaryReader(bis, options.getResultLineIndicator());
         else
             throw new IllegalArgumentException("The result type must be String or byte[] but was " + options.getResultType());
-        communicator = new GenericCommunicator<T>(r, bw);
+        communicator = new GenericCommunicator<T>(r, bw, options.getMultilineResponseDelimiter());
     }
 
     public void stop() throws InterruptedException {
@@ -158,9 +160,11 @@ class GenericCommunicator<T> {
     private BlockingQueue<T> inputDeque;
     private Deque<String> outputDeque = new ArrayDeque<>();
     private BufferedWriter bw;
+    private String multilineResponseDelimiter;
 
-    public GenericCommunicator(Reader<T> reader, BufferedWriter bw) {
+    public GenericCommunicator(Reader<T> reader, BufferedWriter bw, String multilineResponseDelimiter) {
         this.bw = bw;
+        this.multilineResponseDelimiter = multilineResponseDelimiter;
         this.writer = new Writer();
         this.reader = reader;
         this.inputDeque = reader.getInputDeque();
@@ -187,7 +191,14 @@ class GenericCommunicator<T> {
         if (inputDeque == null)
             throw new IllegalStateException("This communicator has already been closed, further calls to receive() are not permitted.");
         log.trace("Waiting for something to be read");
-        receivedData.add(inputDeque.take());
+        if (multilineResponseDelimiter == null) {
+            receivedData.add(inputDeque.take());
+        } else {
+            T response;
+            while (!(response = inputDeque.take()).equals(multilineResponseDelimiter)) {
+                receivedData.add(response);
+            }
+        }
 //        synchronized (reader) {
 //            if (inputDeque.isEmpty())
 //                reader.wait();

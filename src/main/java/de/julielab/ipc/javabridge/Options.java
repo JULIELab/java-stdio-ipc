@@ -14,6 +14,7 @@ public class Options<T> {
     private Predicate<T> resultLineIndicator;
     private String externalProgramTerminationSignal;
     private Class<T> resultType;
+    private String multilineResponseDelimiter;
     public Options(Class<T> resultType) {
         this.resultType = resultType;
     }
@@ -87,5 +88,19 @@ public class Options<T> {
      */
     public void setExternalProgramTerminationSignal(String externalProgramTerminationSignal) {
         this.externalProgramTerminationSignal = externalProgramTerminationSignal;
+    }
+
+    public String getMultilineResponseDelimiter() {
+        return multilineResponseDelimiter;
+    }
+
+    /**
+     * If the external program may respond with multiple lines per {@link StdioBridge#send(String)} call,
+     * there must be a signal to indicate that the response is complete. This signal is the <tt>multilineResponseDelimiter.</tt>
+     * Setting this field does activate the possibility to receive multiple lines of response for a single request.
+     * @param multilineResponseDelimiter
+     */
+    public void setMultilineResponseDelimiter(String multilineResponseDelimiter) {
+        this.multilineResponseDelimiter = multilineResponseDelimiter;
     }
 }
