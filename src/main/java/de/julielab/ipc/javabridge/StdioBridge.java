@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
@@ -19,16 +21,16 @@ import java.util.stream.Stream;
  * This is useful for the connection to applications written in a language for which no direct binding from Java exist.
  * This class resorts to the simple exchange of messages via standard
  * input and output, thus, a pipe. For this purpose, the external process is started using a {@link ProcessBuilder}.
- * Once the external process is started, messages can be send to the process via {@link #send(String)} and
- * {@link #sendAndReceive(String)}. After a message is sent, an answer can be received via {@link #receive()}.
+ * Once the external process is started, messages can be send to the process via {@link #send(byte[])} and
+ * {@link #sendAndReceive(byte[])}. After a message is sent, an answer can be received via {@link #receive()}.
  * </p>
- * <p>The {@link #send(String)} method is <em>synchronous</em>, i.e. this class waits until the given message
+ * <p>The {@link #send(byte[])} method is <em>synchronous</em>, i.e. this class waits until the given message
  * has been sent to the external process. To not miss the answer, a background thread is always reading lines
  * from the standard input of the external process. To get these messages, call {@link #receive()}. This method
  * either gets existing messages that already have been read or it <em>waits</em> for a message to arrive. Thus,
  * the method might block <em>indefinitely</em> in case that no message is sent by the external process.
- * This is why calls to {@link #send(String)} and {@link #receive()} should always come in pairs. For this purpose,
- * the method {@link #sendAndReceive(String)} is helpful.</p>
+ * This is why calls to {@link #send(byte[])} and {@link #receive()} should always come in pairs. For this purpose,
+ * the method {@link #sendAndReceive(byte[])} is helpful.</p>
  * <p>This class supports arbitrary requests and one-line responses by default. By setting the {@link Options#multilineResponseDelimiter} field,
  * multiple lines can be read for each request.
  * </p><p>
@@ -45,7 +47,7 @@ import java.util.stream.Stream;
  * the communication between Java and Python via STDOUT/IN will most like get stuck because the buffers don't get
  * filled at some point an no data is actually sent.</p>
  */
-public class StdioBridge<T> {
+public class StdioBridge<O> {
 
     private final static Logger log = LoggerFactory.getLogger(StdioBridge.class);
 
@@ -55,7 +57,7 @@ public class StdioBridge<T> {
     private ErrorStreamConsumer errorStreamConsumer;
     private Options options;
 
-    public StdioBridge(Options<T> options, String... arguments) {
+    public StdioBridge(Options<O> options, String... arguments) {
         this.options = options;
         if (arguments.length == 0)
             throw new IllegalArgumentException("No external program to run has been specified.");
@@ -73,23 +75,22 @@ public class StdioBridge<T> {
                 ErrorStreamConsumer(process.getErrorStream());
         errorStreamConsumer.start();
         log.info("Started process with arguments {}", Arrays.toString(arguments));
-        // BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
         BufferedInputStream bis = new BufferedInputStream(process.getInputStream());
-        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+        BufferedOutputStream bos = new BufferedOutputStream(process.getOutputStream());
 
-        Reader<T> r;
+        Reader<O> r;
         if (options.getResultType().equals(String.class))
-            r = (Reader<T>) new StringReader(bis, options.getResultLineIndicator());
+            r = (Reader<O>) new StringReader(bis, options.getResultLineIndicator());
         else if (options.getResultType().equals(byte[].class))
-            r = (Reader<T>) new BinaryReader(bis, options.getResultLineIndicator());
+            r = (Reader<O>) new BinaryReader(bis, options.getResultLineIndicator());
         else
             throw new IllegalArgumentException("The result type must be String or byte[] but was " + options.getResultType());
-        communicator = new GenericCommunicator<T>(r, bw, options.getMultilineResponseDelimiter());
+        communicator = new GenericCommunicator<O>(r, bos, options.getMultilineResponseDelimiter());
     }
 
     public void stop() throws InterruptedException {
         if (options.getExternalProgramTerminationSignal() != null) {
-            communicator.send(options.getExternalProgramTerminationSignal());
+            communicator.send(options.getExternalProgramTerminationSignal().getBytes());
             log.info("Sent the external process termination signal \"{}\" and waiting for the process to end.", options.getExternalProgramTerminationSignal());
             process.waitFor();
         }
@@ -113,57 +114,65 @@ public class StdioBridge<T> {
      *
      * @param data The message to be sent to the external process.
      */
-    public void send(String data) {
+    public void send(byte[] data) {
         if (communicator == null)
             throw new IllegalStateException("The internal Python-Java communicator has not been initialized. Did you forget to execute start()?");
         communicator.send(data);
+    }
+
+    public void send(String data) {
+        send(data.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
      * <p>Receives data from the external process.</p>
      * <p>For this purpose, this method will <em>block</em> until data is available. If {@link Options#getResultLineIndicator()}
      * is given, the method will wait until a line is encountered that is accepted by the respective predicate.</p>
-     * <p>This method should only be called if {@link #send(String)} has been called before. Otherwise, there will
+     * <p>This method should only be called if {@link #send(byte[])} has been called before. Otherwise, there will
      * probably be nothing to read the the method will block indefinitely</p>
      *
      * @return The next data line received from the external process.
      * @throws InterruptedException If the method is interrupted while waiting for the next input.
      */
-    public Stream<T> receive() throws InterruptedException {
-        List<T> lines = communicator.receive();
+    public Stream<O> receive() throws InterruptedException {
+        List<O> lines = communicator.receive();
         if (options.getResultTransformator() != null) {
-            Function<T, T> transformator = options.getResultTransformator();
+            Function<O, O> transformator = options.getResultTransformator();
             return lines.stream().map(transformator::apply);
         }
         return lines.stream();
     }
 
     /**
-     * Just calls {@link #send(String)} and {@link #receive()} one ofter the other. Exclusively using this method
+     * Just calls {@link #send(byte[])} and {@link #receive()} one ofter the other. Exclusively using this method
      * ensures that there is always something to read and the receive method does not block forever.
      *
      * @param data The data to send.
      * @return The received response.
      * @throws InterruptedException It waiting for a response is interrupted.
      */
-    public Stream<T> sendAndReceive(String data) throws InterruptedException {
+    public Stream<O> sendAndReceive(byte[] data) throws InterruptedException {
         send(data);
         return receive();
+    }
+
+    public Stream<O> sendAndReceive(String data) throws InterruptedException {
+        return sendAndReceive(data.getBytes(StandardCharsets.UTF_8));
     }
 }
 
 
-class GenericCommunicator<T> {
+class GenericCommunicator<O> {
     private final static Logger log = LoggerFactory.getLogger(GenericCommunicator.class);
-    private final Reader<T> reader;
+    private final Reader<O> reader;
     private final Writer writer;
-    private BlockingQueue<T> inputDeque;
-    private Deque<String> outputDeque = new ArrayDeque<>();
-    private BufferedWriter bw;
+    private BlockingQueue<O> inputDeque;
+    private Deque<byte[]> outputDeque = new ArrayDeque<>();
+    private BufferedOutputStream bos;
     private String multilineResponseDelimiter;
 
-    public GenericCommunicator(Reader<T> reader, BufferedWriter bw, String multilineResponseDelimiter) {
-        this.bw = bw;
+    public GenericCommunicator(Reader<O> reader, BufferedOutputStream bos, String multilineResponseDelimiter) {
+        this.bos = bos;
         this.multilineResponseDelimiter = multilineResponseDelimiter;
         this.writer = new Writer();
         this.reader = reader;
@@ -176,56 +185,54 @@ class GenericCommunicator<T> {
             log.warn("Python-Java bridge was closed before all data was received from the external program:" + inputDeque.stream().map(Object::toString).collect(Collectors.joining(", ")));
         reader.interrupt();
         if (!outputDeque.isEmpty())
-            log.warn("Python-Java bridge was closed before all data was sent to the external program: " + outputDeque.stream().collect(Collectors.joining(", ")));
+            log.warn("Python-Java bridge was closed before all data was sent to the external program: " + outputDeque.stream().map(Object::toString).collect(Collectors.joining(", ")));
         inputDeque = null;
         outputDeque = null;
     }
 
-    public void send(String data) {
+    public void send(byte[] data) {
         outputDeque.add(data);
         writer.run();
     }
 
-    public List<T> receive() throws InterruptedException {
-        List<T> receivedData = new ArrayList<>();
+    public List<O> receive() throws InterruptedException {
+        List<O> receivedData = new ArrayList<>();
         if (inputDeque == null)
             throw new IllegalStateException("This communicator has already been closed, further calls to receive() are not permitted.");
         log.trace("Waiting for something to be read");
         if (multilineResponseDelimiter == null) {
             receivedData.add(inputDeque.take());
         } else {
-            T response;
+            O response;
             while (!(response = inputDeque.take()).equals(multilineResponseDelimiter)) {
                 receivedData.add(response);
             }
         }
-//        synchronized (reader) {
-//            if (inputDeque.isEmpty())
-//                reader.wait();
-//            inputDeque.drainTo(receivedData);
-//        }
         log.trace("Reading from internal buffer {} messages.", receivedData.size());
         return receivedData;
     }
 
-    public List<T> sendAndReceive(String data) throws InterruptedException {
+    public List<O> sendAndReceive(byte[] data) throws InterruptedException {
         send(data);
         return receive();
     }
 
 
     private class Writer {
+        private ByteBuffer buffer = ByteBuffer.allocate(4);
         public void run() {
             try {
                 while (!outputDeque.isEmpty()) {
-                    String toWrite = outputDeque.pop();
+                    byte[] toWrite = outputDeque.pop();
                     log.trace("Writing: " + toWrite);
-                    bw.write(toWrite);
-                    bw.newLine();
+                    buffer.putInt(toWrite.length);
+                    bos.write(buffer.array());
+                    bos.write(toWrite);
+                    buffer.clear();
                     // Important! When we don't flush, the data so sent will most like just reside in the buffer,
                     // at least the last part of it, and dont get sent to the external process. The external process
                     // will then probably block indefinitely, waiting for our request to finish.
-                    bw.flush();
+                    bos.flush();
                 }
             } catch (IOException e) {
                 e.printStackTrace();

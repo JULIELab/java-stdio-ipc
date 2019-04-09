@@ -7,24 +7,24 @@ import java.util.function.Predicate;
  * This is class is a simple container for options given to the constructor of {@link StdioBridge}. The meaning
  * of each option is explained at its setter method.
  */
-public class Options<T> {
+public class Options<O> {
 
     private String executable;
-    private Function<T, T> resultTransformator;
-    private Predicate<T> resultLineIndicator;
+    private Function<O, O> resultTransformator;
+    private Predicate<O> resultLineIndicator;
     private String externalProgramTerminationSignal;
-    private Class<T> resultType;
+    private Class<O> resultType;
     private String multilineResponseDelimiter;
-    public Options(Class<T> resultType) {
+    public Options(Class<O> resultType) {
         this.resultType = resultType;
     }
 
 
-    public Class<T> getResultType() {
+    public Class<O> getResultType() {
         return resultType;
     }
 
-    public Function<T, T> getResultTransformator() {
+    public Function<O, O> getResultTransformator() {
         return resultTransformator;
     }
 
@@ -36,7 +36,7 @@ public class Options<T> {
      *
      * @param resultTransformator The result transformer.
      */
-    public void setResultTransformator(Function<T, T> resultTransformator) {
+    public void setResultTransformator(Function<O, O> resultTransformator) {
         this.resultTransformator = resultTransformator;
     }
 
@@ -54,7 +54,7 @@ public class Options<T> {
         this.executable = executable;
     }
 
-    public Predicate<T> getResultLineIndicator() {
+    public Predicate<O> getResultLineIndicator() {
         return resultLineIndicator;
     }
 
@@ -71,7 +71,7 @@ public class Options<T> {
      *
      * @param resultLineIndicator A predicate to filter output lines, may be null.
      */
-    public void setResultLineIndicator(Predicate<T> resultLineIndicator) {
+    public void setResultLineIndicator(Predicate<O> resultLineIndicator) {
         this.resultLineIndicator = resultLineIndicator;
     }
 

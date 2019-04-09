@@ -9,6 +9,10 @@ import java.util.Base64;
 import java.util.Optional;
 import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.*;
+
+/**
+ * This class tests the binary exchange of double arrays, i.e. numeric vectors.
+ */
 public class StructCommunicationTest {
     @Test
     public void test() throws InterruptedException, IOException {
