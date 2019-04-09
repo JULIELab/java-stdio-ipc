@@ -12,6 +12,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * <p>
@@ -82,10 +83,10 @@ public class StdioBridge<O> {
         if (options.getResultType().equals(String.class))
             r = (Reader<O>) new StringReader(bis, options.getResultLineIndicator());
         else if (options.getResultType().equals(byte[].class))
-            r = (Reader<O>) new BinaryReader(bis, options.getResultLineIndicator());
+            r = (Reader<O>) new BinaryReader(bis, options.getResultLineIndicator(), options.isGzipReceivedData());
         else
             throw new IllegalArgumentException("The result type must be String or byte[] but was " + options.getResultType());
-        communicator = new GenericCommunicator<O>(r, bos, options.getMultilineResponseDelimiter());
+        communicator = new GenericCommunicator<O>(r, bos, options.getMultilineResponseDelimiter(), options.isGzipSentData());
     }
 
     public void stop() throws InterruptedException {
@@ -170,10 +171,12 @@ class GenericCommunicator<O> {
     private Deque<byte[]> outputDeque = new ArrayDeque<>();
     private BufferedOutputStream bos;
     private String multilineResponseDelimiter;
+    private boolean gzipSent;
 
-    public GenericCommunicator(Reader<O> reader, BufferedOutputStream bos, String multilineResponseDelimiter) {
+    public GenericCommunicator(Reader<O> reader, BufferedOutputStream bos, String multilineResponseDelimiter, boolean gzipSent) {
         this.bos = bos;
         this.multilineResponseDelimiter = multilineResponseDelimiter;
+        this.gzipSent = gzipSent;
         this.writer = new Writer();
         this.reader = reader;
         this.inputDeque = reader.getInputDeque();
@@ -225,6 +228,13 @@ class GenericCommunicator<O> {
                 while (!outputDeque.isEmpty()) {
                     byte[] toWrite = outputDeque.pop();
                     log.trace("Writing: " + toWrite);
+                    if (gzipSent) {
+                        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        final BufferedOutputStream bos = new BufferedOutputStream(new GZIPOutputStream(baos));
+                        bos.write(toWrite);
+                        bos.close();
+                        toWrite = baos.toByteArray();
+                    }
                     buffer.putInt(toWrite.length);
                     bos.write(buffer.array());
                     bos.write(toWrite);

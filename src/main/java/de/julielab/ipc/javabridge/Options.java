@@ -15,10 +15,40 @@ public class Options<O> {
     private String externalProgramTerminationSignal;
     private Class<O> resultType;
     private String multilineResponseDelimiter;
+    private boolean gzipSentData;
+    private boolean gzipReceivedData;
+
     public Options(Class<O> resultType) {
         this.resultType = resultType;
     }
 
+    public boolean isGzipSentData() {
+        return gzipSentData;
+    }
+
+    /**
+     * Whether or not the data sent to the external program should be compressed in GZIP format or left untouched.
+     * This should be left at <tt>false</tt> because the compression introduces a large time overhead.
+     *
+     * @param gzipSentData If the sent data should be compressed.
+     */
+    public void setGzipSentData(boolean gzipSentData) {
+        this.gzipSentData = gzipSentData;
+    }
+
+    public boolean isGzipReceivedData() {
+        return gzipReceivedData;
+    }
+
+    /**
+     * Whether or not the data received from the external program should be decompressed from GZIP format or left untouched.
+     * This should be left at <tt>false</tt>, if possible, because the compression introduces a large time overhead.
+     *
+     * @param gzipReceivedData If the received data should be decompressed.
+     */
+    public void setGzipReceivedData(boolean gzipReceivedData) {
+        this.gzipReceivedData = gzipReceivedData;
+    }
 
     public Class<O> getResultType() {
         return resultType;
@@ -98,6 +128,7 @@ public class Options<O> {
      * If the external program may respond with multiple lines per {@link StdioBridge#send(String)} call,
      * there must be a signal to indicate that the response is complete. This signal is the <tt>multilineResponseDelimiter.</tt>
      * Setting this field does activate the possibility to receive multiple lines of response for a single request.
+     *
      * @param multilineResponseDelimiter
      */
     public void setMultilineResponseDelimiter(String multilineResponseDelimiter) {

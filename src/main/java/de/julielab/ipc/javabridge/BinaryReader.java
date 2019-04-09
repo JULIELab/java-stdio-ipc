@@ -1,5 +1,6 @@
 package de.julielab.ipc.javabridge;
 
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +11,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 public class BinaryReader extends Reader<byte[]> {
     private final static Logger log = LoggerFactory.getLogger(BinaryReader.class);
@@ -17,9 +20,11 @@ public class BinaryReader extends Reader<byte[]> {
     private static final int INT_SIZE = 4;
     private List<byte[]> messageBuffer;
     private List<Integer> messageBufferSizes;
+    private boolean gzipReceived;
 
-    public BinaryReader(InputStream is, Predicate<byte[]> resultLineIndicator) {
+    public BinaryReader(InputStream is, Predicate<byte[]> resultLineIndicator, boolean gzipReceived) {
         super(is, resultLineIndicator);
+        this.gzipReceived = gzipReceived;
     }
 
     public void run() {
@@ -45,6 +50,11 @@ public class BinaryReader extends Reader<byte[]> {
 
                 while (currentMessageLength != -1 && bytesReadInCurrentMessage - INT_SIZE >= currentMessageLength) {
                     currentMessage = assembleCurrentMessage(currentMessageLength);
+                    if (gzipReceived) {
+                        final ByteArrayInputStream bais = new ByteArrayInputStream(currentMessage);
+                        final BufferedInputStream bis = new BufferedInputStream(new GZIPInputStream(bais));
+                        currentMessage = IOUtils.toByteArray(bis);
+                    }
                     inputDeque.add(currentMessage);
                     log.trace("Added message of length {} bytes to the queue", currentMessage.length);
                     bytesReadInCurrentMessage = messageBufferSizes.isEmpty() ? 0 : messageBufferSizes.stream().reduce(0, (a, b) -> a + b);
