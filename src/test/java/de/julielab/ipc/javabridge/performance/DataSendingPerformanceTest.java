@@ -3,6 +3,7 @@ package de.julielab.ipc.javabridge.performance;
 import de.julielab.ipc.javabridge.Options;
 import de.julielab.ipc.javabridge.StdioBridge;
 import org.apache.commons.io.IOUtils;
+import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 
 import java.io.FileInputStream;
@@ -10,6 +11,7 @@ import java.io.FileInputStream;
 /**
  * This class computes performance speed values for larger amounts of data sent through the pipe.
  */
+@Ignore
 public class DataSendingPerformanceTest {
     private int numRuns = 100;
     private String data;

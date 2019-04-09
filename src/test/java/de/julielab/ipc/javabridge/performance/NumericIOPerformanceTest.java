@@ -20,6 +20,7 @@ import java.util.stream.Stream;
  * String: 27241
  * BinaryDoubles: 7688
  */
+@Ignore
 public class NumericIOPerformanceTest {
     private int numRuns = 100000;
 
