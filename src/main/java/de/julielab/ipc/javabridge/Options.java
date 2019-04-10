@@ -10,7 +10,7 @@ import java.util.function.Predicate;
 public class Options<O> {
 
     private String executable;
-    private Function<O, O> resultTransformator;
+    private Function<O, O> resultReshaper;
     private Predicate<O> resultLineIndicator;
     private String externalProgramTerminationSignal;
     private Class<O> resultType;
@@ -54,20 +54,20 @@ public class Options<O> {
         return resultType;
     }
 
-    public Function<O, O> getResultTransformator() {
-        return resultTransformator;
+    public Function<O, O> getResultReshaper() {
+        return resultReshaper;
     }
 
     /**
-     * The result transformator is a method that takes the received line from the external process and transforms
+     * The result reshaper is a method that takes the received line from the external process and transforms
      * it into the final format. This is used to remove markers on the input line that indicate the line to be
      * a result line in contrast to other program output. For example, lines could be prefixed with <code>Output:</code>
      * to indicate lines that are meant for the Java program to read.
      *
-     * @param resultTransformator The result transformer.
+     * @param resultReshaper The result reshaper.
      */
-    public void setResultTransformator(Function<O, O> resultTransformator) {
-        this.resultTransformator = resultTransformator;
+    public void setResultReshaper(Function<O, O> resultReshaper) {
+        this.resultReshaper = resultReshaper;
     }
 
     public String getExecutable() {

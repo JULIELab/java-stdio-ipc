@@ -56,7 +56,7 @@ public class StdioBridge<O> {
     private Process process;
     private GenericCommunicator communicator;
     private ErrorStreamConsumer errorStreamConsumer;
-    private Options options;
+    private Options<O> options;
 
     public StdioBridge(Options<O> options, String... arguments) {
         this.options = options;
@@ -81,9 +81,9 @@ public class StdioBridge<O> {
 
         Reader<O> r;
         if (options.getResultType().equals(String.class))
-            r = (Reader<O>) new StringReader(bis, options.getResultLineIndicator());
+            r = (Reader<O>) new StringReader(bis, (Predicate<String>) options.getResultLineIndicator());
         else if (options.getResultType().equals(byte[].class))
-            r = (Reader<O>) new BinaryReader(bis, options.getResultLineIndicator(), options.isGzipReceivedData());
+            r = (Reader<O>) new BinaryReader(bis, (Predicate<byte[]>) options.getResultLineIndicator(), options.isGzipReceivedData());
         else
             throw new IllegalArgumentException("The result type must be String or byte[] but was " + options.getResultType());
         communicator = new GenericCommunicator<O>(r, bos, options.getMultilineResponseDelimiter(), options.isGzipSentData());
@@ -137,8 +137,8 @@ public class StdioBridge<O> {
      */
     public Stream<O> receive() throws InterruptedException {
         List<O> lines = communicator.receive();
-        if (options.getResultTransformator() != null) {
-            Function<O, O> transformator = options.getResultTransformator();
+        if (options.getResultReshaper() != null) {
+            Function<O, O> transformator = options.getResultReshaper();
             return lines.stream().map(transformator::apply);
         }
         return lines.stream();

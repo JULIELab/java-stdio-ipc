@@ -108,7 +108,7 @@ public class StdioBridgeTest {
         Options<String> params = new Options<>(String.class);
         params.setExecutable("python");
         params.setResultLineIndicator(s -> s.startsWith("Output:"));
-        params.setResultTransformator(s -> s.substring(8));
+        params.setResultReshaper(s -> s.substring(8));
         params.setExternalProgramTerminationSignal("exit");
         StdioBridge<String> bridge = new StdioBridge<>(params, "-u", "src/test/resources/python/noise.py");
         assertThatCode(bridge::start).doesNotThrowAnyException();
