@@ -176,7 +176,12 @@ public class BinaryReader extends Reader<byte[]> {
                     break;
             }
 
-            currentMessageLength = (intBytes[0] << 24) | (intBytes[1] << 16) | (intBytes[2] << 8) | intBytes[3];
+            // the &0xff operation removes the sign from the bytes; this is important we implictly convert
+            // bytes to integers. There it happens that when a byte was starting with a 1, that this is
+            // interpreted as a negative number (2-complement representation). Thus, the resulting integer
+            // will have its first bit set to a 1 to keep the negative sign. We neutralize this using
+            // the 11111111=0xff mask.
+            currentMessageLength = ((intBytes[0]&0xff) << 24) | ((intBytes[1]&0xff) << 16) | ((intBytes[2]&0xff) << 8) | (intBytes[3]&0xff);
             log.trace("Current message size is {} bytes", currentMessageLength);
             return currentMessageLength;
         }
