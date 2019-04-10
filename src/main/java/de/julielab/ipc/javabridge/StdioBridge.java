@@ -89,7 +89,7 @@ public class StdioBridge<O> {
         communicator = new GenericCommunicator<O>(r, bos, options.getMultilineResponseDelimiter(), options.isGzipSentData());
     }
 
-    public void stop() throws InterruptedException {
+    public void stop() throws InterruptedException, IOException {
         if (options.getExternalProgramTerminationSignal() != null) {
             communicator.send(options.getExternalProgramTerminationSignal().getBytes());
             log.info("Sent the external process termination signal \"{}\" and waiting for the process to end.", options.getExternalProgramTerminationSignal());
@@ -183,10 +183,12 @@ class GenericCommunicator<O> {
         this.reader.start();
     }
 
-    public void close() {
+    public void close() throws IOException {
         if (!inputDeque.isEmpty())
             log.warn("Python-Java bridge was closed before all data was received from the external program:" + inputDeque.stream().map(Object::toString).collect(Collectors.joining(", ")));
         reader.interrupt();
+        reader.close();
+        bos.close();
         if (!outputDeque.isEmpty())
             log.warn("Python-Java bridge was closed before all data was sent to the external program: " + outputDeque.stream().map(Object::toString).collect(Collectors.joining(", ")));
         inputDeque = null;
@@ -223,6 +225,7 @@ class GenericCommunicator<O> {
 
     private class Writer {
         private ByteBuffer buffer = ByteBuffer.allocate(4);
+
         public void run() {
             try {
                 while (!outputDeque.isEmpty()) {
@@ -259,13 +262,13 @@ class ErrorStreamConsumer extends Thread {
         this.is = is;
     }
 
-    public void close() {
+    public void close() throws IOException {
+        is.close();
         interrupt();
     }
 
     public void run() {
-        try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(is));
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
             String line;
             while ((line = br.readLine()) != null)
                 log.error(line);

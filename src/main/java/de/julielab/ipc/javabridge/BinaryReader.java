@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,10 +34,32 @@ public class BinaryReader extends Reader<byte[]> {
         try {
             if (externalProgramReadySignal != null) {
                 log.debug("Waiting for the signal that the external program is ready ('{}')", externalProgramReadySignal);
-                BufferedReader br = new BufferedReader(new InputStreamReader(is));
-                String line;
-                while (!(line = br.readLine()).equals(externalProgramReadySignal))
-                    log.debug("Received non-ready signal line {}", line);
+                String lastLine = "";
+                StringBuffer sb = new StringBuffer();
+                byte[] eol = System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8);
+                ByteBuffer buffer = ByteBuffer.allocate(8192);
+                while (!lastLine.equals(externalProgramReadySignal)) {
+                    boolean foundEol = false;
+                    while (!foundEol) {
+                        buffer.put((byte) is.read());
+                        if (buffer.position() > eol.length) {
+                            foundEol = true;
+                            for (int i = 0; i < eol.length && foundEol; i++)
+                                foundEol &= eol[i] == buffer.get(i + buffer.position() - eol.length);
+                            if (foundEol) {
+                                byte[] bytes = new byte[buffer.position()-eol.length];
+                                int length = buffer.position() - eol.length;
+                                buffer.position(0);
+                                buffer.get(bytes, 0, length);
+                                lastLine = new String(bytes, StandardCharsets.UTF_8);
+                            }
+                        }
+                    }
+                    buffer.position(0);
+                    if (!lastLine.equals(externalProgramReadySignal))
+                        log.debug("Received non-ready signal line '{}'", lastLine);
+                }
+                log.debug("Received ready signal");
             }
 
 
@@ -51,8 +74,6 @@ public class BinaryReader extends Reader<byte[]> {
             while ((lastReadSize = is.read(buffer)) != -1) {
                 bytesReadInCurrentMessage += lastReadSize;
                 log.trace("Received: {} bytes, total: {}", lastReadSize, bytesReadInCurrentMessage);
-                if (log.isTraceEnabled())
-                    log.trace("Current message part string: {}", new String(buffer));
                 messageBufferSizes.add(lastReadSize);
                 messageBuffer.add(buffer);
                 if (currentMessageLength == -1 && bytesReadInCurrentMessage >= INT_SIZE) {

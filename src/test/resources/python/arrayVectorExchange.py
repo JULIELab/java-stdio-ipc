@@ -15,6 +15,7 @@ def decodeString(buffer):
 vector = [0.1, 0.2, 0.3, -0.4, 0, 42.1337]
 stdbuffer = sys.stdin.buffer
 print("Some pre-ready blabla")
+print("This is also a very important information")
 print("Ready!")
 while True:
     line = decodeString(stdbuffer)

@@ -1,5 +1,6 @@
 package de.julielab.ipc.javabridge;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -20,5 +21,9 @@ public abstract class Reader<T> extends Thread {
 
     public BlockingQueue<T> getInputDeque() {
         return inputDeque;
+    }
+
+    public void close() throws IOException {
+        is.close();
     }
 }
