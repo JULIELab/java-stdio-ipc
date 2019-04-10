@@ -22,8 +22,8 @@ public class BinaryReader extends Reader<byte[]> {
     private List<Integer> messageBufferSizes;
     private boolean gzipReceived;
 
-    public BinaryReader(InputStream is, Predicate<byte[]> resultLineIndicator, boolean gzipReceived) {
-        super(is, resultLineIndicator);
+    public BinaryReader(InputStream is, String externalProgramReadySignal, boolean gzipReceived) {
+        super(is, null, externalProgramReadySignal);
         this.gzipReceived = gzipReceived;
     }
 
@@ -31,6 +31,15 @@ public class BinaryReader extends Reader<byte[]> {
         setName("BinaryReaderThread");
         log.debug("Starting binary reader thread");
         try {
+            if (externalProgramReadySignal != null) {
+                log.debug("Waiting for the signal that the external program is ready ('{}')", externalProgramReadySignal);
+                BufferedReader br = new BufferedReader(new InputStreamReader(is));
+                String line;
+                while (!(line = br.readLine()).equals(externalProgramReadySignal))
+                    log.debug("Received non-ready signal line {}", line);
+            }
+
+
             Supplier<byte[]> bufferSupplier = () -> new byte[8192];
             byte[] buffer = bufferSupplier.get();
             int lastReadSize;
@@ -40,8 +49,10 @@ public class BinaryReader extends Reader<byte[]> {
             messageBufferSizes = new ArrayList<>();
             byte[] currentMessage;
             while ((lastReadSize = is.read(buffer)) != -1) {
-                log.trace("Received: {} bytes", lastReadSize);
                 bytesReadInCurrentMessage += lastReadSize;
+                log.trace("Received: {} bytes, total: {}", lastReadSize, bytesReadInCurrentMessage);
+                if (log.isTraceEnabled())
+                    log.trace("Current message part string: {}", new String(buffer));
                 messageBufferSizes.add(lastReadSize);
                 messageBuffer.add(buffer);
                 if (currentMessageLength == -1 && bytesReadInCurrentMessage >= INT_SIZE) {

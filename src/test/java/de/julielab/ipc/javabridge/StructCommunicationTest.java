@@ -19,6 +19,7 @@ public class StructCommunicationTest {
         Options<byte[]> options = new Options( byte[].class);
         options.setExecutable("python");
         options.setExternalProgramTerminationSignal("exit");
+        options.setExternalProgramReadySignal("Ready!");
         StdioBridge<byte[]> bridge = new StdioBridge(options, "-u", "src/test/resources/python/arrayVectorExchange.py");
         bridge.start();
 

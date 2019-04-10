@@ -81,9 +81,9 @@ public class StdioBridge<O> {
 
         Reader<O> r;
         if (options.getResultType().equals(String.class))
-            r = (Reader<O>) new StringReader(bis, (Predicate<String>) options.getResultLineIndicator());
+            r = (Reader<O>) new StringReader(bis, (Predicate<String>) options.getResultLineIndicator(), options.getExternalProgramReadySignal());
         else if (options.getResultType().equals(byte[].class))
-            r = (Reader<O>) new BinaryReader(bis, (Predicate<byte[]>) options.getResultLineIndicator(), options.isGzipReceivedData());
+            r = (Reader<O>) new BinaryReader(bis, options.getExternalProgramReadySignal(), options.isGzipReceivedData());
         else
             throw new IllegalArgumentException("The result type must be String or byte[] but was " + options.getResultType());
         communicator = new GenericCommunicator<O>(r, bos, options.getMultilineResponseDelimiter(), options.isGzipSentData());

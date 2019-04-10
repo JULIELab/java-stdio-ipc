@@ -31,6 +31,23 @@ public class StdioBridgeTest {
         assertThatCode(bridge::stop).doesNotThrowAnyException();
     }
 
+    @Test
+    public void simpleTestWithReadySignal() throws InterruptedException {
+        Options params = new Options<>(String.class);
+        params.setExecutable("python");
+        params.setExternalProgramTerminationSignal("exit");
+        params.setExternalProgramReadySignal("Ready!");
+        StdioBridge<String> bridge = new StdioBridge<>(params, "-u", "src/test/resources/python/simpleWithReadySignal.py");
+        assertThatCode(bridge::start).doesNotThrowAnyException();
+        bridge.send("Hallo");
+        List<String> list = bridge.receive().collect(Collectors.toList());
+        assertThat(list).isNotEmpty();
+        assertThat(list).containsExactly("Got line: Hallo");
+        bridge.send("Another line");
+        assertThat(bridge.receive()).containsExactly("Got line: Another line");
+        assertThatCode(bridge::stop).doesNotThrowAnyException();
+    }
+
     /**
      * @throws IOException
      * @throws InterruptedException

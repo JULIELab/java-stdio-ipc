@@ -8,11 +8,13 @@ import java.util.function.Predicate;
 public abstract class Reader<T> extends Thread {
     protected InputStream is;
     protected Predicate<T> resultLineIndicator;
+    protected String externalProgramReadySignal;
     protected BlockingQueue<T> inputDeque;
 
-    public Reader(InputStream is, Predicate<T> resultLineIndicator) {
+    public Reader(InputStream is, Predicate<T> resultLineIndicator, String externalProgramReadySignal) {
         this.is = is;
         this.resultLineIndicator = resultLineIndicator;
+        this.externalProgramReadySignal = externalProgramReadySignal;
         this.inputDeque = new LinkedBlockingQueue<>();
     }
 

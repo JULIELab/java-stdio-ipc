@@ -17,9 +17,18 @@ public class Options<O> {
     private String multilineResponseDelimiter;
     private boolean gzipSentData;
     private boolean gzipReceivedData;
+    private String externalProgramReadySignal;
 
     public Options(Class<O> resultType) {
         this.resultType = resultType;
+    }
+
+    public String getExternalProgramReadySignal() {
+        return externalProgramReadySignal;
+    }
+
+    public void setExternalProgramReadySignal(String externalProgramReadySignal) {
+        this.externalProgramReadySignal = externalProgramReadySignal;
     }
 
     public boolean isGzipSentData() {
