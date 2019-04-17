@@ -73,7 +73,7 @@ public class StdioBridge<O> {
         ProcessBuilder builder = new ProcessBuilder(command);
         process = builder.start();
         errorStreamConsumer = new
-                ErrorStreamConsumer(process.getErrorStream());
+                ErrorStreamConsumer(process.getErrorStream(), options.getTerminationSignalFromErrorStream(), Thread.currentThread());
         errorStreamConsumer.start();
         log.info("Started process with arguments {}", Arrays.toString(arguments));
         BufferedInputStream bis = new BufferedInputStream(process.getInputStream());
@@ -86,7 +86,7 @@ public class StdioBridge<O> {
             r = (Reader<O>) new BinaryReader(bis, options.getExternalProgramReadySignal(), options.isGzipReceivedData());
         else
             throw new IllegalArgumentException("The result type must be String or byte[] but was " + options.getResultType());
-        communicator = new GenericCommunicator<O>(r, bos, options.getMultilineResponseDelimiter(), options.isGzipSentData());
+        communicator = new GenericCommunicator<>(r, bos, options.getMultilineResponseDelimiter(), options.isGzipSentData());
     }
 
     public void stop() throws InterruptedException, IOException {
@@ -153,8 +153,18 @@ public class StdioBridge<O> {
      * @throws InterruptedException It waiting for a response is interrupted.
      */
     public Stream<O> sendAndReceive(byte[] data) throws InterruptedException {
+        long sendandreceivetime = System.currentTimeMillis();
+        long time = System.currentTimeMillis();
         send(data);
-        return receive();
+        time = System.currentTimeMillis() - time;
+        log.trace("Sending data took {}ms", time);
+        time = System.currentTimeMillis();
+        final Stream<O> receivedData = receive();
+        time = System.currentTimeMillis() - time;
+        log.trace("Receiving data took {}ms", time);
+        sendandreceivetime = System.currentTimeMillis() - sendandreceivetime;
+        log.trace("sendAndReceive took {}ms", sendandreceivetime);
+        return receivedData;
     }
 
     public Stream<O> sendAndReceive(String data) throws InterruptedException {
@@ -217,12 +227,6 @@ class GenericCommunicator<O> {
         return receivedData;
     }
 
-    public List<O> sendAndReceive(byte[] data) throws InterruptedException {
-        send(data);
-        return receive();
-    }
-
-
     private class Writer {
         private ByteBuffer buffer = ByteBuffer.allocate(4);
 
@@ -239,6 +243,7 @@ class GenericCommunicator<O> {
                         toWrite = baos.toByteArray();
                     }
                     buffer.putInt(toWrite.length);
+                    long time = System.currentTimeMillis();
                     bos.write(buffer.array());
                     bos.write(toWrite);
                     buffer.clear();
@@ -246,6 +251,8 @@ class GenericCommunicator<O> {
                     // at least the last part of it, and dont get sent to the external process. The external process
                     // will then probably block indefinitely, waiting for our request to finish.
                     bos.flush();
+                    time = System.currentTimeMillis() - time;
+                    log.trace("Sending data over pipe took {}ms", time);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -256,10 +263,14 @@ class GenericCommunicator<O> {
 
 class ErrorStreamConsumer extends Thread {
     private final static Logger log = LoggerFactory.getLogger(ErrorStreamConsumer.class);
-    InputStream is;
+    private InputStream is;
+    private String terminationSignal;
+    private Thread bridgeThread;
 
-    ErrorStreamConsumer(InputStream is) {
+    ErrorStreamConsumer(InputStream is, String terminationSignal, Thread bridgeThread) {
         this.is = is;
+        this.terminationSignal = terminationSignal;
+        this.bridgeThread = bridgeThread;
     }
 
     public void close() throws IOException {
@@ -270,10 +281,18 @@ class ErrorStreamConsumer extends Thread {
     public void run() {
         try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
             String line;
-            while ((line = br.readLine()) != null)
+            boolean stop = false;
+            while (!stop && (line = br.readLine()) != null) {
                 log.error(line);
+                if (terminationSignal != null && line.contains(terminationSignal)) {
+                    stop = true;
+                    log.error("The external program did output the termination signal '" + terminationSignal + "' in its error output stream. Check the error log for more information.");
+                    bridgeThread.interrupt();
+                }
+            }
         } catch (IOException ioe) {
             ioe.printStackTrace();
         }
+        log.debug("Error stream thread terminates." );
     }
 }

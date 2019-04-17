@@ -18,9 +18,18 @@ public class Options<O> {
     private boolean gzipSentData;
     private boolean gzipReceivedData;
     private String externalProgramReadySignal;
+    private String terminationSignalFromErrorStream;
 
     public Options(Class<O> resultType) {
         this.resultType = resultType;
+    }
+
+    public String getTerminationSignalFromErrorStream() {
+        return terminationSignalFromErrorStream;
+    }
+
+    public void setTerminationSignalFromErrorStream(String terminationSignalFromErrorStream) {
+        this.terminationSignalFromErrorStream = terminationSignalFromErrorStream;
     }
 
     public String getExternalProgramReadySignal() {

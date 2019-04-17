@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
  * In this class we test the basic functionality of the external python IO: Sending data, receiving data, waiting
@@ -147,5 +148,18 @@ public class StdioBridgeTest {
         final List<String> responses = bridge.receive().collect(Collectors.toList());
         assertThat(responses).hasSize(3);
         assertThatCode(bridge::stop).doesNotThrowAnyException();
+    }
+
+    @Test
+    public void terminateOnSyntaxErrorTest() throws Exception {
+        // Here we test that the termination of bridge in the case of a syntax
+        // error works. Otherwise, the reader will just wait for input that never comes.
+        Options<String> params = new Options<>(String.class);
+        params.setExecutable("python");
+        params.setTerminationSignalFromErrorStream("SyntaxError");
+        StdioBridge<String> bridge = new StdioBridge<>(params, "-u", "src/test/resources/python/syntaxError.py");
+        bridge.start();
+        // We need the receive() call because otherwise the test would end before the python error has come back
+        assertThatExceptionOfType(InterruptedException.class).isThrownBy(bridge::receive);
     }
 }

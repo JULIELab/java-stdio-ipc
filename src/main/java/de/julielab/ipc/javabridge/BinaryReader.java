@@ -47,7 +47,7 @@ public class BinaryReader extends Reader<byte[]> {
                             for (int i = 0; i < eol.length && foundEol; i++)
                                 foundEol &= eol[i] == buffer.get(i + buffer.position() - eol.length);
                             if (foundEol) {
-                                byte[] bytes = new byte[buffer.position()-eol.length];
+                                byte[] bytes = new byte[buffer.position() - eol.length];
                                 int length = buffer.position() - eol.length;
                                 buffer.position(0);
                                 buffer.get(bytes, 0, length);
@@ -71,7 +71,10 @@ public class BinaryReader extends Reader<byte[]> {
             messageBuffer = new ArrayList<>();
             messageBufferSizes = new ArrayList<>();
             byte[] currentMessage;
+            long time = -1;
             while ((lastReadSize = is.read(buffer)) != -1) {
+                if (time == -1)
+                    time = System.currentTimeMillis();
                 bytesReadInCurrentMessage += lastReadSize;
                 log.trace("Received: {} bytes, total: {}", lastReadSize, bytesReadInCurrentMessage);
                 messageBufferSizes.add(lastReadSize);
@@ -89,6 +92,9 @@ public class BinaryReader extends Reader<byte[]> {
                     }
                     inputDeque.add(currentMessage);
                     log.trace("Added message of length {} bytes to the queue", currentMessage.length);
+                    time = System.currentTimeMillis() - time;
+                    log.trace("Retrieving and assembling last message took {}ms", time);
+                    time = System.currentTimeMillis();
                     bytesReadInCurrentMessage = messageBufferSizes.isEmpty() ? 0 : messageBufferSizes.stream().reduce(0, (a, b) -> a + b);
                     currentMessageLength = readMessageLength();
                 }
@@ -98,7 +104,7 @@ public class BinaryReader extends Reader<byte[]> {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        log.debug("BinaryReader thread terminates.");
     }
 
     private byte[] assembleCurrentMessage(int currentMessageLength) {
@@ -181,7 +187,7 @@ public class BinaryReader extends Reader<byte[]> {
             // interpreted as a negative number (2-complement representation). Thus, the resulting integer
             // will have its first bit set to a 1 to keep the negative sign. We neutralize this using
             // the 11111111=0xff mask.
-            currentMessageLength = ((intBytes[0]&0xff) << 24) | ((intBytes[1]&0xff) << 16) | ((intBytes[2]&0xff) << 8) | (intBytes[3]&0xff);
+            currentMessageLength = ((intBytes[0] & 0xff) << 24) | ((intBytes[1] & 0xff) << 16) | ((intBytes[2] & 0xff) << 8) | (intBytes[3] & 0xff);
             log.trace("Current message size is {} bytes", currentMessageLength);
             return currentMessageLength;
         }

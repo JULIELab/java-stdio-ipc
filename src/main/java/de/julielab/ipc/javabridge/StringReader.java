@@ -43,5 +43,6 @@ public class StringReader extends Reader<String> {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        log.debug("String reader thread terminates" );
     }
 }
