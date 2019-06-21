@@ -80,13 +80,17 @@ public class StdioBridge<O> {
         BufferedOutputStream bos = new BufferedOutputStream(process.getOutputStream());
 
         Reader<O> r;
-        if (options.getResultType().equals(String.class))
+        final boolean isStringResponse = options.getResultType().equals(String.class);
+        if (isStringResponse)
             r = (Reader<O>) new StringReader(bis, (Predicate<String>) options.getResultLineIndicator(), options.getExternalProgramReadySignal());
         else if (options.getResultType().equals(byte[].class))
             r = (Reader<O>) new BinaryReader(bis, options.getExternalProgramReadySignal(), options.isGzipReceivedData());
         else
             throw new IllegalArgumentException("The result type must be String or byte[] but was " + options.getResultType());
-        communicator = new GenericCommunicator<>(r, bos, options.getMultilineResponseDelimiter(), options.isGzipSentData());
+        // Currently, only the StringReader supports the MultilineResponseDelimiter. If specified for the BinaryReader, it would cause
+        // the GenericCommunicator#receive method to wait for the signal that can never come because no strings are returned from the external program
+        // but just binary streams.
+        communicator = new GenericCommunicator<>(r, bos, isStringResponse ? options.getMultilineResponseDelimiter() : null, options.isGzipSentData());
     }
 
     public void stop() throws InterruptedException, IOException {
