@@ -75,7 +75,7 @@ public class StdioBridge<O> {
         errorStreamConsumer = new
                 ErrorStreamConsumer(process.getErrorStream(), options.getTerminationSignalFromErrorStream(), Thread.currentThread());
         errorStreamConsumer.start();
-        log.info("Started process with arguments {}", Arrays.toString(arguments));
+        log.debug("Started process with arguments {}", Arrays.toString(arguments));
         BufferedInputStream bis = new BufferedInputStream(process.getInputStream());
         BufferedOutputStream bos = new BufferedOutputStream(process.getOutputStream());
 
