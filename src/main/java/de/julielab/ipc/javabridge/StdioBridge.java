@@ -57,6 +57,7 @@ public class StdioBridge<O> {
     private GenericCommunicator communicator;
     private ErrorStreamConsumer errorStreamConsumer;
     private Options<O> options;
+    private  boolean isRunning;
 
     public StdioBridge(Options<O> options, String... arguments) {
         this.options = options;
@@ -91,6 +92,11 @@ public class StdioBridge<O> {
         // the GenericCommunicator#receive method to wait for the signal that can never come because no strings are returned from the external program
         // but just binary streams.
         communicator = new GenericCommunicator<>(r, bos, isStringResponse ? options.getMultilineResponseDelimiter() : null, options.isGzipSentData());
+        isRunning = true;
+    }
+
+    public boolean isRunning() {
+        return isRunning;
     }
 
     public void stop() throws InterruptedException, IOException {
@@ -111,6 +117,7 @@ public class StdioBridge<O> {
             int exitValue = process.exitValue();
             log.info("Process exited with exit value {}. The run arguments was: {}", exitValue, Arrays.toString(arguments));
         }
+        isRunning = false;
     }
 
     /**

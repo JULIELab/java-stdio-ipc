@@ -26,6 +26,8 @@ while True:
     sys.stdout.buffer.write(bytes)
     print(end='')
 
+    print('interrupting text')
+
     vector = [0.7, 0.8, 0.9]
     bytes = pack('>ddd', *vector)
     sys.stdout.buffer.write(pack('>i', len(bytes)))
