@@ -1,5 +1,7 @@
 # Java STDIO Inter Process Communication
 
+__Requirements__: Java >= 11, for tests: Python >= 3.6
+
 This library organizes the exchange of string messages between a Java program (the user of this library)
 and an external program via standard input and output.
 
