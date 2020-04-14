@@ -6,6 +6,7 @@ import java.util.function.Predicate;
 /**
  * This is class is a simple container for options given to the constructor of {@link StdioBridge}. The meaning
  * of each option is explained at its setter method.
+ * @param <O> The class of the received messages. Either {@link String} or <tt>byte[]</tt>.
  */
 public class Options<O> {
 
