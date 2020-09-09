@@ -13,20 +13,20 @@ For some simple examples, consult the tests. They use some Python scripts to com
 
 ## Workflow
 
-The central class of the Library is `de.julielab.ipc.javabridge.StdioBridge`. This is the class that sends messages
-to the pipe connecting it with the external program and receives messages from the external program to use within
+The central class of the library is `de.julielab.ipc.javabridge.StdioBridge`. This is the class that sends messages
+to the pipe connected to the external program and receives messages from the external program to use within
 the Java code. The exact behaviour of the bridge is defined by `de.julielab.ipc.javabridge.Options`. There, the
 executable of the external program is defined, how to distinguish result lines from normal external program
-output, the termination signal and more. Most importantly, the class of the received (not sent) messages is configured there.
+output, the termination signal and more. Most importantly, the class of the received messages is configured there.
 
 When a bridge is created, it is started via the `start()` method. This will start the external program.
 
 The external program has to be delivered from the user of the library. It will typically read from STDIN in a loop,
 process the message, produce some output and send it back via STDOUT. This can be done as a normal string or in
-binary mode (Python, for example, offers `sys.stdout.buffer.write` to write bytes directly into the output buffer).
+binary mode (Python, for example, offers `sys.stdout.buffer.write` to write bytes directly into the output buffer; don't forget to flush the buffer to actually send the message to the pipe).
 
 Messages sent from Java to the external program are always strings. Received messages may be in string or binary form.
-In the latter case, the user of the library needs to interpret the received messages.
+In the latter case, the user of the library needs to interpret the received messages (e.g. convert the bytes to a vector of doubles).
 
 At the end of processing, the `stop()` method of the bridge should be called. This closes the pipe and sends the
 termination signal (configured in the `Options` object) to the external program. The external program should react
