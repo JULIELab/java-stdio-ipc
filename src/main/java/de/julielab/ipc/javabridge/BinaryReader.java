@@ -35,12 +35,16 @@ public class BinaryReader extends Reader<byte[]> {
             if (externalProgramReadySignal != null) {
                 log.debug("Waiting for the signal that the external program is ready ('{}')", externalProgramReadySignal);
                 String lastLine = "";
-                StringBuffer sb = new StringBuffer();
+                StringBuilder currentLine = new StringBuilder();
                 byte[] eol = System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8);
                 ByteBuffer buffer = ByteBuffer.allocate(8192);
                 while (!lastLine.equals(externalProgramReadySignal)) {
                     boolean foundEol = false;
                     while (!foundEol) {
+                        if (buffer.position() == buffer.limit()) {
+                            currentLine.append(new String(buffer.array(), StandardCharsets.UTF_8));
+                            buffer.clear();
+                        }
                         buffer.put((byte) is.read());
                         if (buffer.position() > eol.length) {
                             foundEol = true;
@@ -51,7 +55,9 @@ public class BinaryReader extends Reader<byte[]> {
                                 int length = buffer.position() - eol.length;
                                 buffer.position(0);
                                 buffer.get(bytes, 0, length);
-                                lastLine = new String(bytes, StandardCharsets.UTF_8);
+                                currentLine.append(new String(bytes, StandardCharsets.UTF_8));
+                                lastLine = currentLine.toString();
+                                currentLine.setLength(0);
                             }
                         }
                     }
