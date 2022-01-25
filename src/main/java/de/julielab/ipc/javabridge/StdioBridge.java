@@ -102,7 +102,7 @@ public class StdioBridge<O> {
     public void stop() throws InterruptedException, IOException {
         if (options.getExternalProgramTerminationSignal() != null) {
             communicator.send(options.getExternalProgramTerminationSignal().getBytes());
-            log.info("Sent the external process termination signal \"{}\" and waiting for the process to end.", options.getExternalProgramTerminationSignal());
+            log.debug("Sent the external process termination signal \"{}\" and waiting for the process to end.", options.getExternalProgramTerminationSignal());
             process.waitFor();
         }
         if (communicator != null)
@@ -115,7 +115,7 @@ public class StdioBridge<O> {
                 process.waitFor();
             }
             int exitValue = process.exitValue();
-            log.info("Process exited with exit value {}. The run arguments was: {}", exitValue, Arrays.toString(arguments));
+            log.debug("Process exited with exit value {}. The run arguments was: {}", exitValue, Arrays.toString(arguments));
         }
         isRunning = false;
     }
